@@ -1,0 +1,57 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgres"
+  url      = env("DATABASE_URL")
+}
+
+model Game {
+  id         Int          @id @default(autoincrement())
+  code       String       @unique
+  status     GameStatus   @default(WAITING)
+  createdAt  DateTime     @default(now())
+  participants Participant[]
+}
+
+model Participant {
+  id              Int          @id @default(autoincrement())
+  telegramId      String       @unique
+  username        String
+  taskText        String
+  assignedToId    Int?
+  receivedTask    String?
+  taskSentAt      DateTime?
+  taskCompleted   Boolean      @default(false)
+  points          Int          @default(0)
+  isAdmin         Boolean      @default(false)
+  gameId          Int
+  game            Game         @relation(fields: [gameId], references: [id])
+
+  guessesMade     Guess[]      @relation("Guesser")   // <--- добавлено
+  guessesReceived Guess[]      @relation("Target")    // <--- добавлено
+}
+
+model Guess {
+  id         Int         @id @default(autoincrement())
+  guesser    Participant @relation("Guesser", fields: [guesserId], references: [id])
+  guesserId  Int
+  target     Participant @relation("Target", fields: [targetId], references: [id])
+  targetId   Int
+  guessText  String
+  isCorrect  Boolean
+  guessedAt  DateTime    @default(now())
+}
+
+enum GameStatus {
+  WAITING
+  IN_PROGRESS
+  ENDED
+}
