@@ -1,34 +1,43 @@
-import { Telegraf } from 'telegraf';
+import { Telegraf, Context } from 'telegraf';
 import { prisma } from '../db';
-import { generateGameCode } from '../utils/generateGameCode'; // Assuming you have this utility function
+import { generateGameCode } from '../utils/generateGameCode';
 
-export function setupNewGame(bot: Telegraf) {
-  bot.command('new_game', async (ctx) => {
-    const userId = ctx.from.id.toString();
-    const username = ctx.from.username || ctx.from.first_name;
+export async function handleCreateGame(ctx: Context) {
+  const userId = ctx.from!.id.toString();
+  const username = ctx.from!.username || ctx.from!.first_name;
 
-    console.log('👉 START от:', ctx.from.username);
-  
-    const code = generateGameCode();
+  const code = generateGameCode();
 
-    const game = await prisma.game.create({
-      data: {
-        code,
-        participants: {
-          create: {
-            telegramId: userId,
-            username,
-            taskText: '',
-            isAdmin: true,
-          },
+  // проверяем, есть ли уже такой участник
+  const existing = await prisma.participant.findUnique({
+    where: { telegramId: userId },
+  });
+
+  if (existing) {
+    return ctx.reply('Ты уже зарегистрирован в игре. Используй /games чтобы посмотреть список.');
+  }
+
+  // создаём игру и участника
+  const game = await prisma.game.create({
+    data: {
+      code,
+      participants: {
+        create: {
+          telegramId: userId,
+          username,
+          taskText: '',
+          isAdmin: true,
         },
       },
-    });
-
-    ctx.reply(
-      `🆕 Игра создана!\nКод: *${code}*\nПоделись ссылкой с командой:\n` +
-      `https://t.me/${bot.botInfo?.username}?start=${code}`,
-      { parse_mode: 'Markdown' }
-    );
+    },
   });
+
+  await ctx.reply(`🆕 Игра создана!\nКод: ${code}\nСсылка: https://t.me/${ctx.botInfo?.username}?start=${code}`);
+  await ctx.reply(`👤 Ты — администратор этой игры.\n\nИспользуй /games чтобы посмотреть список игр.`);
+  
+}
+
+
+export function setupNewGame(bot: Telegraf) {
+  bot.command('new_game', handleCreateGame);
 }

@@ -1,91 +1,66 @@
-import { Telegraf } from 'telegraf';
+import { Telegraf, Context } from 'telegraf';
 import { prisma } from '../db';
-import { isAdmin } from '../utils/isAdmin';
 
 export function setupStartGame(bot: Telegraf) {
-  bot.command('start_game', async (ctx) => {
-    const telegramId = ctx.from.id;
+  bot.command('start_game', async (ctx: Context) => {
+    const userId = ctx.from!.id.toString();
 
-    if (!isAdmin(telegramId)) {
-      return ctx.reply('Только админ может запускать игру.');
-    }
-
-    const game = await prisma.game.findFirst({
-      where: { status: 'WAITING' },
-      include: { participants: true },
+    const participant = await prisma.participant.findUnique({
+      where: { telegramId: userId },
+      include: { game: true },
     });
 
-    if (!game || game.participants.length < 2) {
-      return ctx.reply('Недостаточно участников или игра уже началась.');
+    if (!participant || !participant.isAdmin) {
+      return ctx.reply('⛔ Только админ может запустить игру.');
     }
 
-    const shuffled = [...game.participants].sort(() => Math.random() - 0.5);
+    const gameId = participant.gameId;
 
-    // Назначаем задания (каждому следующего)
+    const participants = await prisma.participant.findMany({
+      where: { gameId },
+    });
+
+    if (participants.length < 2) {
+      return ctx.reply('❗ Для начала игры нужно минимум два участника.');
+    }
+
+    const notReady = participants.filter(p => !p.taskText || p.taskText.trim() === '');
+    if (notReady.length > 0) {
+      return ctx.reply(`⛔ Не все участники ввели задания. Введи задание и попроси остальных.`);
+    }
+
+    // рандомное перемешивание
+    const shuffled = [...participants];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    // назначение заданий по кругу
     for (let i = 0; i < shuffled.length; i++) {
-      const giver = shuffled[i];
-      const receiver = shuffled[(i + 1) % shuffled.length];
+      const from = shuffled[i];
+      const to = shuffled[(i + 1) % shuffled.length];
 
       await prisma.participant.update({
-        where: { id: receiver.id },
+        where: { telegramId: to.telegramId },
         data: {
-          receivedTask: giver.taskText,
-          assignedToId: giver.id,
+          receivedTask: from.taskText,
+          taskSentAt: new Date(),
         },
       });
+
+      try {
+        await ctx.telegram.sendMessage(to.telegramId, `🎯 Твоё задание: "${from.taskText}"`);
+      } catch (err) {
+        console.error(`❌ Не удалось отправить задание @${to.username}:`, err);
+      }
     }
 
-    // Обновляем статус игры
     await prisma.game.update({
-      where: { id: game.id },
+      where: { id: gameId },
       data: { status: 'IN_PROGRESS' },
     });
 
-    ctx.reply('Игра началась! Задания будут высланы участникам случайно.');
-
-    // Рассылка заданий в случайный момент (от 1 до 5 минут)
-    for (const p of game.participants) {
-      const delay = Math.floor(Math.random() * 4 + 1) * 60 * 1000;
-
-      setTimeout(async () => {
-        try {
-          await bot.telegram.sendMessage(
-            Number(p.telegramId),
-            `🔍 Вот твоё секретное задание:\n\n${p.receivedTask}`
-          );
-
-          await prisma.participant.update({
-            where: { id: p.id },
-            data: { taskSentAt: new Date() },
-          });
-        } catch (err) {
-          console.error(`❗ Ошибка при отправке задания ${p.username}`, err);
-        }
-      }, delay);
-    }
-
-    // Авто-завершение игры через 30 минут
-    setTimeout(async () => {
-      const updatedGame = await prisma.game.findUnique({
-        where: { id: game.id },
-        include: { participants: true },
-      });
-
-      if (updatedGame?.status === 'IN_PROGRESS') {
-        await prisma.game.update({
-          where: { id: game.id },
-          data: { status: 'ENDED' },
-        });
-
-        const leaderboard = updatedGame.participants
-          .sort((a, b) => b.points - a.points)
-          .map((p, i) => `${i + 1}. @${p.username} — ${p.points} очков`);
-
-        await bot.telegram.sendMessage(
-          telegramId,
-          `⏳ Время вышло!\n\n🏁 Игра завершена!\n\n🏆 Таблица лидеров:\n\n${leaderboard.join('\n')}`
-        );
-      }
-    }, 30 * 60 * 1000); // 30 минут
+    ctx.reply('🚀 Игра запущена! Задания отправлены участникам.');
   });
 }

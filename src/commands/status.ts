@@ -1,40 +1,34 @@
-import { Telegraf } from 'telegraf';
+import { Telegraf, Context } from 'telegraf';
 import { prisma } from '../db';
-import { isAdmin } from '../utils/isAdmin';
+
+export async function handleStatus(ctx: Context) {
+  const telegramId = ctx.from!.id.toString();
+
+  const game = await prisma.game.findFirst({
+    where: {
+      participants: {
+        some: { telegramId },
+      },
+      status: { in: ['WAITING', 'IN_PROGRESS'] },
+    },
+    include: {
+      participants: true,
+    },
+  });
+
+  if (!game) {
+    return ctx.reply('Ты не в активной игре.');
+  }
+
+  const lines = game.participants.map((p, i) => {
+    return `${i + 1}. @${p.username} — ${p.points} очков | ${p.taskCompleted ? '✅ Выполнил' : '⏳ В процессе'}`;
+  });
+
+  ctx.reply(`📊 Статус участников:
+
+${lines.join('\n')}`);
+}
 
 export function setupStatus(bot: Telegraf) {
-  bot.command('status', async (ctx) => {
-    const telegramId = ctx.from.id;
-
-    if (!isAdmin(telegramId)) {
-      return ctx.reply('Эта команда доступна только администратору.');
-    }
-
-    const game = await prisma.game.findFirst({
-      where: { status: { in: ['WAITING', 'IN_PROGRESS'] } },
-      include: {
-        participants: {
-          orderBy: { id: 'asc' },
-        },
-      },
-    });
-
-    if (!game || game.participants.length === 0) {
-      return ctx.reply('Нет активной игры или участников.');
-    }
-
-    const statusLines = game.participants.map((p, i) => {
-      return `${i + 1}. @${p.username || 'неизвестен'} — ${
-        p.taskText ? '✅ задание задано' : '❌ нет задания'
-      } | ${
-        p.receivedTask
-          ? p.taskCompleted
-            ? '🎯 выполнено'
-            : '📨 задание получено'
-          : '⌛ ожидает выдачи'
-      } | ${p.points} очков`;
-    });
-
-    ctx.reply(`📊 Статус игры:\n\n${statusLines.join('\n')}`);
-  });
+  bot.command('status', handleStatus);
 }
