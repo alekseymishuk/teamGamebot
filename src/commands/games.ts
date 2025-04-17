@@ -32,7 +32,7 @@ export async function handleShowGames(ctx: Context) {
 
   return ctx.reply(`📋 Твои игры:
 
-${msg}`, { parse_mode: 'Markdown' });
+${msg}`);
 }
 
 export function setupGames(bot: Telegraf) {

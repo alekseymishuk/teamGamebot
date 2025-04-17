@@ -1,6 +1,7 @@
 import { Telegraf, Context } from 'telegraf';
 import { prisma } from '../db';
 import { generateGameCode } from '../utils/generateGameCode';
+import { handleAddTask } from './addTask';
 
 export async function handleCreateGame(ctx: Context) {
   const userId = ctx.from!.id.toString();
@@ -18,7 +19,7 @@ export async function handleCreateGame(ctx: Context) {
   }
 
   // создаём игру и участника
-  const game = await prisma.game.create({
+  await prisma.game.create({
     data: {
       code,
       participants: {
@@ -34,6 +35,7 @@ export async function handleCreateGame(ctx: Context) {
 
   await ctx.reply(`🆕 Игра создана!\nКод: ${code}\nСсылка: https://t.me/${ctx.botInfo?.username}?start=${code}`);
   await ctx.reply(`👤 Ты — администратор этой игры.\n\nИспользуй /games чтобы посмотреть список игр.`);
+  handleAddTask(ctx); // сразу переходим к добавлению задания
   
 }
 

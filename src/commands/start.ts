@@ -2,9 +2,8 @@
 import { Telegraf, Context } from 'telegraf';
 import { prisma } from '../db';
 import { mainMenuKeyboard } from '../ui/mainMenu';
-import { Message } from 'telegraf/typings/core/types/typegram';
+import { handleAddTask } from './addTask';
 
-const waitingForTask = new Set<string>();
 
 export function setupStart(bot: Telegraf) {
   bot.start(async (ctx) => {
@@ -30,8 +29,9 @@ export function setupStart(bot: Telegraf) {
 
     if (existing) {
       if (!existing.taskText || existing.taskText.trim() === '') {
-        waitingForTask.add(userId);
-        return ctx.reply(`👋 Ты уже в игре с кодом ${code}, но ещё не ввёл задание. Пожалуйста, напиши его сейчас.`);
+        ctx.reply(`👋 Ты уже в игре с кодом ${code}`);
+        handleAddTask(ctx); // сразу переходим к добавлению задания
+        return;
       } else {
         return ctx.reply(`👋 С возвращением в игру с кодом ${code}!`, mainMenuKeyboard);
       }
@@ -48,37 +48,8 @@ export function setupStart(bot: Telegraf) {
       },
     });
 
-    waitingForTask.add(userId);
 
-    ctx.reply(`✅ Ты присоединился к игре с кодом *${code}*!\nНапиши задание, которое должен будет выполнить другой участник.`, {
-      parse_mode: 'Markdown',
-    });
-  });
-
-  bot.use(async (ctx, next) => {
-    const userId = ctx.from?.id.toString();
-    const message = ctx.message as Message.TextMessage | undefined;
-
-    if (!message || !userId) return next();
-
-    const text = message.text.trim();
-
-    if (!waitingForTask.has(userId)) return next();
-
-    if (text.startsWith('/')) {
-      waitingForTask.delete(userId);
-      return next();
-    }
-
-    const participant = await prisma.participant.findUnique({ where: { telegramId: userId } });
-    if (!participant) return next();
-
-    await prisma.participant.update({
-      where: { telegramId: userId },
-      data: { taskText: text },
-    });
-
-    waitingForTask.delete(userId);
-    ctx.reply('📝 Задание сохранено! Ожидай начала игры.', mainMenuKeyboard);
+    ctx.reply(`✅ Ты присоединился к игре с кодом *${code}*!`);
+    handleAddTask(ctx); // сразу переходим к добавлению задания
   });
 }

@@ -13,13 +13,15 @@ import { setupStatus } from './commands/status';
 import { setupGames } from './commands/games';
 import { setupMenuActions } from './commands/menuActions';
 import { setupGameManagement } from './commands/gameManagement';
+import { setupAddTask } from './commands/addTask';
+import { setupAllActions } from './commands/admin/allActions';
 
 const bot = new Telegraf(process.env.BOT_TOKEN!);
 
 // Команды
 setupStart(bot);
 setupNewGame(bot);
-setupGames(bot); 
+setupGames(bot);
 setupJoinManual(bot);
 setupJoinByCode(bot);
 setupComplete(bot);
@@ -28,6 +30,10 @@ setupStartGame(bot);
 setupEndGame(bot);
 setupStatus(bot);
 setupGameManagement(bot);
+setupAddTask(bot);
+setupAllActions(bot);
+
+
 
 // Обработка кнопок внизу — обязательно в КОНЦЕ
 setupMenuActions(bot);

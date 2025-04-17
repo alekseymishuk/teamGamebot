@@ -21,7 +21,7 @@ export async function handleStatus(ctx: Context) {
   }
 
   const lines = game.participants.map((p, i) => {
-    return `${i + 1}. @${p.username} — ${p.points} очков | ${p.taskCompleted ? '✅ Выполнил' : '⏳ В процессе'}`;
+    return `${i + 1}. @${p.username} — ${p.points} очков | ${p.taskCompleted ? '✅ Выполнил' : '⏳ В процессе'} | ${p.taskText ? 'Задание ✅' : 'Задание ❌'}`;
   });
 
   ctx.reply(`📊 Статус участников:

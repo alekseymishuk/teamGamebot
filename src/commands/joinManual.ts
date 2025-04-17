@@ -55,8 +55,8 @@ export function setupJoinManual(bot: Telegraf) {
       },
     });
   
-    ctx.reply(`✅ Ты присоединился к игре с кодом *${code}*! Введи своё задание.`, {
-      parse_mode: 'Markdown',
-    });
+    ctx.reply(`✅ Ты присоединился к игре с кодом *${code}*! Введи своё задание.`);
+
   });
-}
+  }
+  
