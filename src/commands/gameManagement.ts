@@ -2,44 +2,63 @@ import { Telegraf, Context } from 'telegraf';
 import { prisma } from '../db';
 
 export function setupGameManagement(bot: Telegraf) {
-  // 1. Выйти из игры
+  // 1. leave_game
   bot.command('leave_game', async (ctx) => {
-    const userId = ctx.from!.id.toString();
+    const telegramId = ctx.from!.id.toString();
 
     const participant = await prisma.participant.findUnique({
-      where: { telegramId: userId },
+      where: { telegramId },
     });
 
     if (!participant) return ctx.reply('Ты не в игре.');
 
-    await prisma.participant.delete({
-      where: { telegramId: userId },
-    });
+    try {
+      // удаляем связанные догадки
+      await prisma.guess.deleteMany({
+        where: {
+          OR: [
+            { guesserId: telegramId },
+            { targetId: telegramId },
+          ],
+        },
+      });
 
-    ctx.reply('🚪 Ты вышел из игры.');
-  });
+      // удаляем участника
+      await prisma.participant.delete({
+        where: { telegramId },
+      });
 
-  // 2. Удалить игру (только админ)
-  bot.command('delete_game', async (ctx) => {
-    const userId = ctx.from!.id.toString();
-
-    const participant = await prisma.participant.findUnique({
-      where: { telegramId: userId },
-      include: { game: true },
-    });
-
-    if (!participant || !participant.isAdmin) {
-      return ctx.reply('⛔ Только админ может удалять игру.');
+      ctx.reply('🚪 Ты покинул игру. Твоя запись удалена.');
+    } catch (err) {
+      console.error('Ошибка при удалении участника:', err);
+      ctx.reply('Произошла ошибка при выходе из игры.');
     }
 
-    await prisma.participant.deleteMany({
-      where: { gameId: participant.gameId },
-    });
-
-    await prisma.game.delete({
-      where: { id: participant.gameId },
-    });
-
-    ctx.reply('🗑 Игра удалена.');
   });
+
+  // 2. delete_game (only for admin)
+  bot.command('delete_game', handleDeleteGame);
 }
+
+export const handleDeleteGame = async (ctx: Context) => {
+  const userId = ctx.from!.id.toString();
+
+  const participant = await prisma.participant.findUnique({
+    where: { telegramId: userId },
+    include: { game: true },
+  });
+
+  if (!participant || !participant.isAdmin) {
+    return ctx.reply('⛔ Только админ может удалять игру.');
+  }
+
+  await prisma.participant.deleteMany({
+    where: { gameId: participant.gameId },
+  });
+
+  await prisma.game.delete({
+    where: { id: participant.gameId },
+  });
+
+  ctx.reply('🗑 Игра удалена.');
+};

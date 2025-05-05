@@ -28,7 +28,7 @@ export function setupGuess(bot: Telegraf) {
       return ctx.reply('Неверный username или участник не найден.');
     }
 
-    // сравнение строк через string-similarity
+    // compareTwoStrings is a function from the string-similarity library
     const similarity = compareTwoStrings(
       guessText.toLowerCase(),
       target.taskText.toLowerCase()
@@ -40,8 +40,8 @@ export function setupGuess(bot: Telegraf) {
       data: {
         guessText,
         isCorrect,
-        guesserId: guesser.id,
-        targetId: target.id,
+        guesserId: guesser.id.toString(),
+        targetId: target.id.toString(),
       },
     });
 

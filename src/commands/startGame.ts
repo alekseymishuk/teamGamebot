@@ -19,6 +19,14 @@ export const handleStartGame = async (ctx: Context) => {
     where: { gameId },
   });
 
+  const game = await prisma.game.findFirst({
+    where: { id: gameId }
+  })
+
+  if (game?.status === "IN_PROGRESS") {
+    return ctx.reply('❗ Игра уже началась.');
+  }
+
   if (participants.length < 1) {
     return ctx.reply('❗ Для начала игры нужно минимум два участника.');
   }
@@ -29,14 +37,12 @@ export const handleStartGame = async (ctx: Context) => {
     return ctx.reply(`⛔ Не все участники ввели задания:\n${list}`);
   }
 
-  // рандомное перемешивание
   const shuffled = [...participants];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
 
-  // назначение заданий по кругу
   for (let i = 0; i < shuffled.length; i++) {
     const from = shuffled[i];
     const to = shuffled[(i + 1) % shuffled.length];

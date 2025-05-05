@@ -1,33 +1,75 @@
-import { Telegraf } from 'telegraf';
+import { Telegraf, Context } from 'telegraf';
 import { prisma } from '../db';
-import { isAdmin } from '../utils/isAdmin';
+import { handleDeleteGame } from './gameManagement';
 
 export function setupEndGame(bot: Telegraf) {
-  bot.command('end_game', async (ctx) => {
-    const telegramId = ctx.from.id;
+  bot.command('end_game', async (ctx: Context) => {
+    const telegramId = ctx.from?.id.toString();
+    if (!telegramId) return;
 
-    if (!isAdmin(telegramId)) {
-      return ctx.reply('Только админ может завершить игру.');
-    }
-
-    const game = await prisma.game.findFirst({
-      where: { status: 'IN_PROGRESS' },
-      include: {
-        participants: true,
-      },
+    const admin = await prisma.participant.findUnique({
+      where: { telegramId },
     });
 
-    if (!game) return ctx.reply('Нет активной игры.');
+    if (!admin || !admin.isAdmin) {
+      return ctx.reply('⛔ Только админ может завершить игру.');
+    }
+
+    const gameId = admin.gameId;
 
     await prisma.game.update({
-      where: { id: game.id },
+      where: { id: gameId },
       data: { status: 'ENDED' },
     });
 
-    const leaderboard = game.participants
-      .sort((a, b) => b.points - a.points)
-      .map((p, i) => `${i + 1}. @${p.username} — ${p.points} очков`);
+    const participants = await prisma.participant.findMany({
+      where: { gameId },
+    });
 
-    ctx.reply(`🏁 Игра завершена!\n\n🏆 Таблица лидеров:\n\n${leaderboard.join('\n')}`);
+    const guesses = await prisma.guess.findMany({
+      where: {
+        OR: [
+          { guesserId: { in: participants.map(p => p.telegramId) } },
+          { targetId: { in: participants.map(p => p.telegramId) } },
+        ],
+      },
+    });
+
+    const summaryLines: string[] = [];
+
+    for (const [index, participant] of participants.entries()) {
+      const name = participant.username || 'без_имени';
+
+      const correctGuesses = guesses.filter(
+        g => g.guesserId === participant.telegramId && g.isCorrect
+      ).length;
+
+      const taskCompleted = participant.taskCompleted ? '✅' : '❌';
+
+      // определяем, кто получил задание от этого участника
+      const taskReceiver = participants.find(
+        p => p.receivedTask === participant.taskText
+      );
+
+      const star = taskReceiver ? '⭐' : '';
+
+      summaryLines.push(
+        `${index + 1}. ${name} ${taskCompleted} | Угадал: ${correctGuesses} ${star}`
+      );
+    }
+
+    const summary = summaryLines.join('\n');
+
+    for (const p of participants) {
+      try {
+        await ctx.telegram.sendMessage(
+          p.telegramId,
+          `🏁 Игра завершена!\n\n📊 Результаты:\n${summary}`
+        );
+      } catch (err) {
+        console.error(`❌ Не удалось отправить результат @${p.username}:`, err);
+      }
+    }
+    handleDeleteGame(ctx);
   });
 }

@@ -1,4 +1,3 @@
-// === start.ts ===
 import { Telegraf, Context } from 'telegraf';
 import { prisma } from '../db';
 import { mainMenuKeyboard } from '../ui/mainMenu';
@@ -30,14 +29,13 @@ export function setupStart(bot: Telegraf) {
     if (existing) {
       if (!existing.taskText || existing.taskText.trim() === '') {
         ctx.reply(`👋 Ты уже в игре с кодом ${code}`);
-        handleAddTask(ctx); // сразу переходим к добавлению задания
+        handleAddTask(ctx);
         return;
       } else {
         return ctx.reply(`👋 С возвращением в игру с кодом ${code}!`, mainMenuKeyboard);
       }
     }
 
-    // добавляем участника в игру
     await prisma.participant.create({
       data: {
         telegramId: userId,
@@ -50,6 +48,6 @@ export function setupStart(bot: Telegraf) {
 
 
     ctx.reply(`✅ Ты присоединился к игре с кодом *${code}*!`);
-    handleAddTask(ctx); // сразу переходим к добавлению задания
+    handleAddTask(ctx);
   });
 }

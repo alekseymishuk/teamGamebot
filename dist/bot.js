@@ -1,0 +1,37 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const telegraf_1 = require("telegraf");
+require("dotenv/config");
+const start_1 = require("./commands/start");
+const newGame_1 = require("./commands/newGame");
+const joinManual_1 = require("./commands/joinManual");
+const joinByCode_1 = require("./commands/joinByCode");
+const complete_1 = require("./commands/complete");
+const guess_1 = require("./commands/guess");
+const startGame_1 = require("./commands/startGame");
+const endGame_1 = require("./commands/endGame");
+const status_1 = require("./commands/status");
+const games_1 = require("./commands/games");
+const menuActions_1 = require("./commands/menuActions");
+const gameManagement_1 = require("./commands/gameManagement");
+const addTask_1 = require("./commands/addTask");
+const allActions_1 = require("./commands/admin/allActions");
+const bot = new telegraf_1.Telegraf(process.env.BOT_TOKEN);
+// Comands
+(0, start_1.setupStart)(bot);
+(0, newGame_1.setupNewGame)(bot);
+(0, games_1.setupGames)(bot);
+(0, joinManual_1.setupJoinManual)(bot);
+(0, joinByCode_1.setupJoinByCode)(bot);
+(0, complete_1.setupComplete)(bot);
+(0, guess_1.setupGuess)(bot);
+(0, startGame_1.setupStartGame)(bot);
+(0, endGame_1.setupEndGame)(bot);
+(0, status_1.setupStatus)(bot);
+(0, gameManagement_1.setupGameManagement)(bot);
+(0, addTask_1.setupAddTask)(bot);
+(0, allActions_1.setupAllActions)(bot);
+// setup Menu actions
+(0, menuActions_1.setupMenuActions)(bot);
+bot.launch();
+console.log('🤖 Бот запущен...');

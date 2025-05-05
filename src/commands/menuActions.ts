@@ -13,11 +13,11 @@ export function setupMenuActions(bot: Telegraf) {
     const text = ctx.message.text;
     console.log('text', text);
 
-    if (text.startsWith('/')) return; // не мешаем командам
+    if (text.startsWith('/')) return;
 
     switch (text) {
       case Menu.CREATE_GAME:
-        return handleCreateGame(ctx); // вызываем напрямую
+        return handleCreateGame(ctx);
 
       case Menu.JOIN_GAME:
         return ctx.reply('Введи /join_by_code');

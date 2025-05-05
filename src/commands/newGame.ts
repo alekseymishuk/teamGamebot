@@ -9,7 +9,6 @@ export async function handleCreateGame(ctx: Context) {
 
   const code = generateGameCode();
 
-  // проверяем, есть ли уже такой участник
   const existing = await prisma.participant.findUnique({
     where: { telegramId: userId },
   });
@@ -18,7 +17,6 @@ export async function handleCreateGame(ctx: Context) {
     return ctx.reply('Ты уже зарегистрирован в игре. Используй /games чтобы посмотреть список.');
   }
 
-  // создаём игру и участника
   await prisma.game.create({
     data: {
       code,
@@ -35,8 +33,8 @@ export async function handleCreateGame(ctx: Context) {
 
   await ctx.reply(`🆕 Игра создана!\nКод: ${code}\nСсылка: https://t.me/${ctx.botInfo?.username}?start=${code}`);
   await ctx.reply(`👤 Ты — администратор этой игры.\n\nИспользуй /games чтобы посмотреть список игр.`);
-  handleAddTask(ctx); // сразу переходим к добавлению задания
-  
+  handleAddTask(ctx);
+
 }
 
 

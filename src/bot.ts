@@ -14,11 +14,14 @@ import { setupGames } from './commands/games';
 import { setupMenuActions } from './commands/menuActions';
 import { setupGameManagement } from './commands/gameManagement';
 import { setupAddTask } from './commands/addTask';
+
 import { setupAllActions } from './commands/admin/allActions';
+import { setupEditTask } from './commands/editTask';
+import { setupManageParticipants } from './commands/manageParticipants';
 
 const bot = new Telegraf(process.env.BOT_TOKEN!);
 
-// Команды
+// Comands
 setupStart(bot);
 setupNewGame(bot);
 setupGames(bot);
@@ -32,10 +35,12 @@ setupStatus(bot);
 setupGameManagement(bot);
 setupAddTask(bot);
 setupAllActions(bot);
+setupEditTask(bot);
+setupManageParticipants(bot);
 
 
 
-// Обработка кнопок внизу — обязательно в КОНЦЕ
+// setup Menu actions
 setupMenuActions(bot);
 
 bot.launch();

@@ -35,20 +35,24 @@ model Participant {
   gameId          Int
   game            Game         @relation(fields: [gameId], references: [id])
 
-  guessesMade     Guess[]      @relation("Guesser")   // <--- добавлено
-  guessesReceived Guess[]      @relation("Target")    // <--- добавлено
+  guessesMade     Guess[]      @relation("Guesser")
+  guessesReceived Guess[]      @relation("Target")
 }
 
 model Guess {
   id         Int         @id @default(autoincrement())
-  guesser    Participant @relation("Guesser", fields: [guesserId], references: [id])
-  guesserId  Int
-  target     Participant @relation("Target", fields: [targetId], references: [id])
-  targetId   Int
+
+  guesserId  String
+  guesser    Participant @relation("Guesser", fields: [guesserId], references: [telegramId], onDelete: Cascade)
+
+  targetId   String
+  target     Participant @relation("Target", fields: [targetId], references: [telegramId], onDelete: Cascade)
+
   guessText  String
   isCorrect  Boolean
   guessedAt  DateTime    @default(now())
 }
+
 
 enum GameStatus {
   WAITING
